@@ -38,8 +38,8 @@ class CSVDailyBarDataSource(object):
         self.adjust_prices = adjust_prices
         self.csv_symbols = csv_symbols
 
+        self.trading_dates = set([])
         self.asset_bar_frames = self._load_csvs_into_dfs()
-        self.asset_bid_ask_frames = self._convert_bars_into_bid_ask_dfs()
 
     def _obtain_asset_csv_files(self):
         """
@@ -91,11 +91,13 @@ class CSVDailyBarDataSource(object):
         csv_df = pd.read_csv(
             os.path.join(self.csv_dir, csv_file),
             index_col='Date',
-            parse_dates=True
+            parse_dates=False
         ).sort_index()
 
         # Ensure all timestamps are set to UTC for consistency
-        csv_df = csv_df.set_index(csv_df.index.tz_localize(pytz.UTC))
+        dates = csv_df.index.to_list()
+
+        self.trading_dates = self.trading_dates.union(set(dates))
         return csv_df
 
     def _load_csvs_into_dfs(self):
@@ -177,26 +179,6 @@ class CSVDailyBarDataSource(object):
         dp_df = dp_df.loc[:, ['Date', 'Bid', 'Ask']].ffill().set_index('Date').sort_index()
         return dp_df
 
-    def _convert_bars_into_bid_ask_dfs(self):
-        """
-        Convert all of the daily OHLCV 'bar' based DataFrames into
-        individually-timestamped open/closing price DataFrames.
-
-        Returns
-        -------
-        `dict{pd.DataFrame}`
-            The converted DataFrames.
-        """
-        if settings.PRINT_EVENTS:
-            print("Adjusting pricing in CSV files...")
-        asset_bid_ask_frames = {}
-        for asset_symbol, bar_df in self.asset_bar_frames.items():
-            if settings.PRINT_EVENTS:
-                print("Adjusting CSV file for symbol '%s'..." % asset_symbol)
-            asset_bid_ask_frames[asset_symbol] = \
-                self._convert_bar_frame_into_bid_ask_df(bar_df)
-        return asset_bid_ask_frames
-
     @functools.lru_cache(maxsize=1024 * 1024)
     def get_bid(self, dt, asset):
         """
@@ -214,13 +196,18 @@ class CSVDailyBarDataSource(object):
         `float`
             The bid price.
         """
-        bid_ask_df = self.asset_bid_ask_frames[asset]
-        bid_series = bid_ask_df.iloc[bid_ask_df.index.get_indexer([dt], method='pad')]['Bid']
+        return self.get_close(dt, asset)
+
+    def get_close(self, dt, asset):
         try:
-            bid = bid_series.iloc[0]
-        except KeyError:  # Before start date
+            df = self.asset_bar_frames[asset]
+            date = dt.strftime("%Y-%m-%d")
+            row = df.loc[date]
+            return row["Close"]
+        except:
+            import traceback
+            traceback.print_exc()
             return np.nan
-        return bid
 
     @functools.lru_cache(maxsize=1024 * 1024)
     def get_ask(self, dt, asset):
@@ -239,13 +226,7 @@ class CSVDailyBarDataSource(object):
         `float`
             The ask price.
         """
-        bid_ask_df = self.asset_bid_ask_frames[asset]
-        ask_series = bid_ask_df.iloc[bid_ask_df.index.get_indexer([dt], method='pad')]['Ask']
-        try:
-            ask = ask_series.iloc[0]
-        except KeyError:  # Before start date
-            return np.nan
-        return ask
+        return self.get_close(dt, asset)
 
     def get_assets_historical_closes(self, start_dt, end_dt, assets):
         """
@@ -276,3 +257,10 @@ class CSVDailyBarDataSource(object):
         prices_df = pd.concat(close_series, axis=1).dropna(how='all')
         prices_df = prices_df.loc[start_dt:end_dt]
         return prices_df
+
+    def is_trading_date(self, date):
+        return date in self.trading_dates
+
+    def is_asset_trading_date(self, asset, date):
+        df = self.asset_bar_frames[asset]
+        return date in df.index

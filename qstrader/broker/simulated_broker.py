@@ -661,6 +661,8 @@ class SimulatedBroker(Broker):
         # Update portfolio asset values
         for portfolio in self.portfolios:
             for asset in self.portfolios[portfolio].pos_handler.positions:
+                if not self.data_handler.is_asset_trading_date(asset, dt):
+                    continue
                 mid_price = self.data_handler.get_asset_latest_mid_price(
                     dt, asset
                 )
@@ -677,6 +679,8 @@ class SimulatedBroker(Broker):
                         (portfolio, self.open_orders[portfolio].get())
                     )
 
-            sorted_orders = sorted(orders, key=lambda x: x[1].direction)
-            for portfolio, order in sorted_orders:
-                self._execute_order(dt, portfolio, order)
+            if orders:
+                sorted_orders = sorted(orders, key=lambda x: x[1].direction)
+                for portfolio, order in sorted_orders:
+                    if self.data_handler.is_asset_trading_date(order.asset, dt):
+                        self._execute_order(dt, portfolio, order)

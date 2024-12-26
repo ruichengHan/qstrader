@@ -1,4 +1,5 @@
 import numpy as np
+import pandas
 
 
 class BacktestDataHandler(object):
@@ -12,6 +13,20 @@ class BacktestDataHandler(object):
     ):
         self.universe = universe
         self.data_sources = data_sources
+
+    def is_trading_dates(self, dt: pandas.Timestamp):
+        date = dt.strftime("%Y-%m-%d")
+        for datasource in self.data_sources:
+            if datasource.is_trading_date(date):
+                return True
+        return False
+
+    def is_asset_trading_date(self, asset: str, dt: pandas.Timestamp):
+        date = dt.strftime("%Y-%m-%d")
+        for datasource in self.data_sources:
+            if datasource.is_asset_trading_date(asset, date):
+                return True
+        return False
 
     def get_asset_latest_bid_price(self, dt, asset_symbol):
         """

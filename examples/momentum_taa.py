@@ -149,9 +149,9 @@ class TopNMomentumAlphaModel(AlphaModel):
 
 if __name__ == "__main__":
     # Duration of the backtest
-    start_dt = pd.Timestamp('1998-12-22 14:30:00', tz=pytz.UTC)
-    burn_in_dt = pd.Timestamp('1999-12-22 14:30:00', tz=pytz.UTC)
-    end_dt = pd.Timestamp('2020-12-31 23:59:00', tz=pytz.UTC)
+    start_dt = pd.Timestamp('2012-01-04 14:30:00', tz=pytz.UTC)
+    burn_in_dt = pd.Timestamp('2013-01-04 14:30:00', tz=pytz.UTC)
+    end_dt = pd.Timestamp('2023-08-12 23:59:00', tz=pytz.UTC)
 
     # Model parameters
     mom_lookback = 126  # Six months worth of business days
@@ -159,19 +159,18 @@ if __name__ == "__main__":
 
     # Construct the symbols and assets necessary for the backtest
     # This utilises the SPDR US sector ETFs, all beginning with XL
-    strategy_symbols = ['XL%s' % sector for sector in "BCEFIKPUVY"]
+    strategy_symbols = ['sh60000%s' % sector for sector in "0456789"]
     assets = ['EQ:%s' % symbol for symbol in strategy_symbols]
 
     # As this is a dynamic universe of assets (XLC is added later)
     # we need to tell QSTrader when XLC can be included. This is
     # achieved using an asset dates dictionary
     asset_dates = {asset: start_dt for asset in assets}
-    asset_dates['EQ:XLC'] = pd.Timestamp('2018-06-18 00:00:00', tz=pytz.UTC)
     strategy_universe = DynamicUniverse(asset_dates)
 
     # To avoid loading all CSV files in the directory, set the
     # data source to load only those provided symbols
-    csv_dir = os.environ.get('QSTRADER_CSV_DATA_DIR', '.')
+    csv_dir = os.environ.get('QSTRADER_CSV_DATA_DIR', '/Users/rui.chengcr/PycharmProjects/qs_data/')
     strategy_data_source = CSVDailyBarDataSource(csv_dir, Equity, csv_symbols=strategy_symbols)
     strategy_data_handler = BacktestDataHandler(strategy_universe, data_sources=[strategy_data_source])
 
@@ -201,15 +200,15 @@ if __name__ == "__main__":
     strategy_backtest.run()
 
     # Construct benchmark assets (buy & hold SPY)
-    benchmark_symbols = ['SPY']
-    benchmark_assets = ['EQ:SPY']
+    benchmark_symbols = ['sh000300']
+    benchmark_assets = ['EQ:sh000300']
     benchmark_universe = StaticUniverse(benchmark_assets)
     benchmark_data_source = CSVDailyBarDataSource(csv_dir, Equity, csv_symbols=benchmark_symbols)
     benchmark_data_handler = BacktestDataHandler(benchmark_universe, data_sources=[benchmark_data_source])
 
     # Construct a benchmark Alpha Model that provides
     # 100% static allocation to the SPY ETF, with no rebalance
-    benchmark_alpha_model = FixedSignalsAlphaModel({'EQ:SPY': 1.0})
+    benchmark_alpha_model = FixedSignalsAlphaModel({'EQ:sh000300': 1.0})
     benchmark_backtest = BacktestTradingSession(
         burn_in_dt,
         end_dt,

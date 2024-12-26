@@ -4,6 +4,7 @@ import pandas as pd
 from pandas.tseries.offsets import BDay
 import pytz
 
+from qstrader.data.backtest_data_handler import BacktestDataHandler
 from qstrader.simulation.sim_engine import SimulationEngine
 from qstrader.simulation.event import SimulationEvent
 
@@ -34,7 +35,7 @@ class DailyBusinessDaySimulationEngine(SimulationEngine):
         Whether to include a post-market event
     """
 
-    def __init__(self, starting_day, ending_day, pre_market=True, post_market=True):
+    def __init__(self, starting_day, ending_day, pre_market=False, post_market=False, data_handler=None):
         if ending_day < starting_day:
             raise ValueError(
                 "Ending date time %s is earlier than starting date time %s. "
@@ -46,9 +47,9 @@ class DailyBusinessDaySimulationEngine(SimulationEngine):
         self.ending_day = ending_day
         self.pre_market = pre_market
         self.post_market = post_market
-        self.business_days = self._generate_business_days()
+        self.business_days = self._generate_business_days(data_handler)
 
-    def _generate_business_days(self):
+    def _generate_business_days(self, data_handler: BacktestDataHandler):
         """
         Generate the list of business days using midnight UTC as
         the timestamp.
@@ -61,6 +62,9 @@ class DailyBusinessDaySimulationEngine(SimulationEngine):
         days = pd.date_range(
             self.starting_day, self.ending_day, freq=BDay()
         )
+
+        days = list(filter(lambda x: data_handler.is_trading_dates(x), days))
+
         return days
 
     def __iter__(self):

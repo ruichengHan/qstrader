@@ -227,7 +227,7 @@ class BacktestTradingSession(TradingSession):
             The simulation engine generating simulation timestamps.
         """
         return DailyBusinessDaySimulationEngine(
-            self.start_dt, self.end_dt, pre_market=False, post_market=False
+            self.start_dt, self.end_dt, pre_market=False, post_market=False, data_handler=self.data_handler
         )
 
     def _create_rebalance_event_times(self):
@@ -384,8 +384,6 @@ class BacktestTradingSession(TradingSession):
         for event in self.sim_engine:
             # Output the system event and timestamp
             dt = event.ts
-            if settings.PRINT_EVENTS:
-                print("(%s) - %s" % (event.ts, event.event_type))
 
             # Update the simulated broker
             self.broker.update(dt)

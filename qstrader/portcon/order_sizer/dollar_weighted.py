@@ -154,6 +154,9 @@ class DollarWeightedCashBufferedOrderSizer(OrderSizer):
                 asset, est_quantity, pre_cost_dollar_weight, broker=self.broker
             )
 
+            if not self.data_handler.is_asset_trading_date(asset, dt):
+                continue
+
             # Calculate integral target asset quantity assuming broker costs
             after_cost_dollar_weight = pre_cost_dollar_weight - est_costs
             asset_price = self.data_handler.get_asset_latest_ask_price(
