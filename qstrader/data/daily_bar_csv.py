@@ -90,7 +90,7 @@ class CSVDailyBarDataSource(object):
         """
         csv_df = pd.read_csv(
             os.path.join(self.csv_dir, csv_file),
-            index_col='Date',
+            index_col='date',
             parse_dates=False
         ).sort_index()
 
@@ -203,7 +203,7 @@ class CSVDailyBarDataSource(object):
             df = self.asset_bar_frames[asset]
             date = dt.strftime("%Y-%m-%d")
             row = df.loc[date]
-            return row["Close"]
+            return row["close"]
         except:
             import traceback
             traceback.print_exc()

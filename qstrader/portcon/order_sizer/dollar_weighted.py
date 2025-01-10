@@ -173,7 +173,7 @@ class DollarWeightedCashBufferedOrderSizer(OrderSizer):
 
             # TODO: Long only for the time being.
             asset_quantity = int(
-                np.floor(after_cost_dollar_weight / asset_price)
+                np.floor(after_cost_dollar_weight / asset_price // 100 * 100)
             )
 
             # Add to the target portfolio

@@ -329,7 +329,7 @@ class BacktestTradingSession(TradingSession):
         """
         Output the portfolio holdings to the console.
         """
-        self.broker.portfolios[self.portfolio_id].holdings_to_console()
+        print(self.broker.portfolios[self.portfolio_id])
 
     def get_equity_curve(self):
         """

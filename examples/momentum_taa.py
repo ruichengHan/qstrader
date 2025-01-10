@@ -9,10 +9,10 @@ from qstrader.alpha_model.fixed_signals import FixedSignalsAlphaModel
 from qstrader.asset.equity import Equity
 from qstrader.asset.universe.dynamic import DynamicUniverse
 from qstrader.asset.universe.static import StaticUniverse
-from qstrader.signals.momentum import MomentumSignal
-from qstrader.signals.signals_collection import SignalsCollection
 from qstrader.data.backtest_data_handler import BacktestDataHandler
 from qstrader.data.daily_bar_csv import CSVDailyBarDataSource
+from qstrader.signals.momentum import MomentumSignal
+from qstrader.signals.signals_collection import SignalsCollection
 from qstrader.statistics.tearsheet import TearsheetStatistics
 from qstrader.trading.backtest import BacktestTradingSession
 
@@ -20,7 +20,7 @@ from qstrader.trading.backtest import BacktestTradingSession
 class TopNMomentumAlphaModel(AlphaModel):
 
     def __init__(
-        self, signals, mom_lookback, mom_top_n, universe, data_handler
+            self, signals, mom_lookback, mom_top_n, universe, data_handler
     ):
         """
         Initialise the TopNMomentumAlphaModel
@@ -52,7 +52,7 @@ class TopNMomentumAlphaModel(AlphaModel):
         self.data_handler = data_handler
 
     def _highest_momentum_asset(
-        self, dt
+            self, dt
     ):
         """
         Calculates the ordered list of highest performing momentum
@@ -71,7 +71,7 @@ class TopNMomentumAlphaModel(AlphaModel):
             restricted to the 'Top N'.
         """
         assets = self.signals['momentum'].assets
-        
+
         # Calculate the holding-period return momenta for each asset,
         # for the particular provided momentum lookback period
         all_momenta = {
@@ -84,15 +84,15 @@ class TopNMomentumAlphaModel(AlphaModel):
         # restricted by the provided number of desired assets to
         # trade per month
         return [
-            asset[0] for asset in sorted(
+                   asset[0] for asset in sorted(
                 all_momenta.items(),
                 key=operator.itemgetter(1),
                 reverse=True
             )
-        ][:self.mom_top_n]
+               ][:self.mom_top_n]
 
     def _generate_signals(
-        self, dt, weights
+            self, dt, weights
     ):
         """
         Calculate the highest performing momentum for each
@@ -118,7 +118,7 @@ class TopNMomentumAlphaModel(AlphaModel):
         return weights
 
     def __call__(
-        self, dt
+            self, dt
     ):
         """
         Calculates the signal weights for the top N
@@ -147,19 +147,28 @@ class TopNMomentumAlphaModel(AlphaModel):
         return weights
 
 
+def get_symbols():
+    folder_path = "../qs_data/"
+    out = []
+    for root, dirs, files in os.walk(folder_path):
+        for file_name in files:
+            out.append(file_name.split(".")[0])
+    return out
+
+
 if __name__ == "__main__":
     # Duration of the backtest
-    start_dt = pd.Timestamp('2012-01-04 14:30:00', tz=pytz.UTC)
-    burn_in_dt = pd.Timestamp('2013-01-04 14:30:00', tz=pytz.UTC)
-    end_dt = pd.Timestamp('2023-08-12 23:59:00', tz=pytz.UTC)
+    start_dt = pd.Timestamp('2016-01-04 14:30:00', tz=pytz.UTC)
+    burn_in_dt = pd.Timestamp('2016-06-01 14:30:00', tz=pytz.UTC)
+    end_dt = pd.Timestamp('2024-12-31 23:59:00', tz=pytz.UTC)
 
     # Model parameters
     mom_lookback = 126  # Six months worth of business days
-    mom_top_n = 3  # Number of assets to include at any one time
+    mom_top_n = 10  # Number of assets to include at any one time
 
     # Construct the symbols and assets necessary for the backtest
     # This utilises the SPDR US sector ETFs, all beginning with XL
-    strategy_symbols = ['sh60000%s' % sector for sector in "0456789"]
+    strategy_symbols = get_symbols()
     assets = ['EQ:%s' % symbol for symbol in strategy_symbols]
 
     # As this is a dynamic universe of assets (XLC is added later)
@@ -170,7 +179,7 @@ if __name__ == "__main__":
 
     # To avoid loading all CSV files in the directory, set the
     # data source to load only those provided symbols
-    csv_dir = os.environ.get('QSTRADER_CSV_DATA_DIR', '/Users/rui.chengcr/PycharmProjects/qs_data/')
+    csv_dir = os.environ.get('QSTRADER_CSV_DATA_DIR', '/Users/rui.chengcr/PycharmProjects/qstrader/qs_data/')
     strategy_data_source = CSVDailyBarDataSource(csv_dir, Equity, csv_symbols=strategy_symbols)
     strategy_data_handler = BacktestDataHandler(strategy_universe, data_sources=[strategy_data_source])
 
@@ -197,7 +206,7 @@ if __name__ == "__main__":
         burn_in_dt=burn_in_dt,
         data_handler=strategy_data_handler
     )
-    strategy_backtest.run()
+    strategy_backtest.run(True)
 
     # Construct benchmark assets (buy & hold SPY)
     benchmark_symbols = ['sh000300']
