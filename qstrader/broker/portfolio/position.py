@@ -39,6 +39,7 @@ class Position(object):
         self,
         asset,
         current_price,
+        current_adjust_price,
         current_dt,
         buy_quantity,
         sell_quantity,
@@ -49,9 +50,12 @@ class Position(object):
     ):
         self.asset = asset
         self.current_price = current_price
+        self.current_adjust_price = current_adjust_price
         self.current_dt = current_dt
         self.buy_quantity = buy_quantity
+        self.adjust_buy_quantity = buy_quantity * self.current_price / self.current_adjust_price
         self.sell_quantity = sell_quantity
+        self.adjust_sell_quantity = sell_quantity * self.current_price / self.current_adjust_price
         self.avg_bought = avg_bought
         self.avg_sold = avg_sold
         self.buy_commission = buy_commission
@@ -75,6 +79,7 @@ class Position(object):
         """
         asset = transaction.asset
         current_price = transaction.price
+        current_adjust_price = transaction.adjust_price
         current_dt = transaction.dt
 
         if transaction.quantity > 0:
@@ -95,6 +100,7 @@ class Position(object):
         return cls(
             asset,
             current_price,
+            current_adjust_price,
             current_dt,
             buy_quantity,
             sell_quantity,
@@ -150,7 +156,8 @@ class Position(object):
         `float`
             The current market value of the Position.
         """
-        return self.current_price * self.net_quantity
+        # return self.current_price * self.net_quantity
+        return self.current_adjust_price * self.net_adjust_quantity
 
     @property
     def avg_price(self):
@@ -180,6 +187,18 @@ class Position(object):
             The net quantity of assets.
         """
         return self.buy_quantity - self.sell_quantity
+
+    @property
+    def net_adjust_quantity(self):
+        """
+        The difference in the quantity of assets bought and sold to date.
+
+        Returns
+        -------
+        `int`
+            The net quantity of assets.
+        """
+        return self.adjust_buy_quantity - self.adjust_sell_quantity
 
     @property
     def total_bought(self):
@@ -303,7 +322,7 @@ class Position(object):
         """
         return self.realised_pnl + self.unrealised_pnl
 
-    def update_current_price(self, market_price, dt=None):
+    def update_current_price(self, market_price, adjust_price, dt=None):
         """
         Updates the Position's awareness of the current market price
         of the Asset, with an optional timestamp.
@@ -312,6 +331,8 @@ class Position(object):
         ----------
         market_price : `float`
             The current market price.
+        adjust_price : `float`
+            The current adjust price.
         dt : `pd.Timestamp`, optional
             The optional timestamp of the current market price.
         """
@@ -324,8 +345,9 @@ class Position(object):
             )
         else:
             self.current_price = market_price
+            self.current_adjust_price = adjust_price
 
-    def _transact_buy(self, quantity, price, commission):
+    def _transact_buy(self, quantity, price, adjust_price, commission):
         """
         Handle the accounting for creating a new long leg for the
         Position.
@@ -336,14 +358,17 @@ class Position(object):
             The additional quantity of assets to purchase.
         price : `float`
             The price at which this leg was purchased.
+        adjust_price: `float`
+            The adjust price at which this leg was purchased.
         commission : `float`
             The commission paid to the broker for the purchase.
         """
         self.avg_bought = ((self.avg_bought * self.buy_quantity) + (quantity * price)) / (self.buy_quantity + quantity)
         self.buy_quantity += quantity
+        self.adjust_buy_quantity += quantity * price / adjust_price
         self.buy_commission += commission
 
-    def _transact_sell(self, quantity, price, commission):
+    def _transact_sell(self, quantity, price, adjust_price, commission):
         """
         Handle the accounting for creating a new short leg for the
         Position.
@@ -354,11 +379,14 @@ class Position(object):
             The additional quantity of assets to sell.
         price : `float`
             The price at which this leg was sold.
+        adjust_price: `float`
+            the adjust price at which this leg was sold.
         commission : `float`
             The commission paid to the broker for the sale.
         """
         self.avg_sold = ((self.avg_sold * self.sell_quantity) + (quantity * price)) / (self.sell_quantity + quantity)
         self.sell_quantity += quantity
+        self.adjust_sell_quantity += quantity * price / adjust_price
         self.sell_commission += commission
 
     def transact(self, transaction):
@@ -389,15 +417,17 @@ class Position(object):
             self._transact_buy(
                 transaction.quantity,
                 transaction.price,
+                transaction.adjust_price,
                 transaction.commission
             )
         else:
             self._transact_sell(
                 -1.0 * transaction.quantity,
                 transaction.price,
+                transaction.adjust_price,
                 transaction.commission
             )
 
         # Update the current trade information
-        self.update_current_price(transaction.price, transaction.dt)
+        self.update_current_price(transaction.price, transaction.adjust_price, transaction.dt)
         self.current_dt = transaction.dt

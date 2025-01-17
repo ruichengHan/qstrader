@@ -39,6 +39,7 @@ def get_stock_his(code, start, end):
 
 def get_index_his(code):
     df = ak.stock_zh_index_daily(symbol=code)
+    df["adjust_close"] = df["close"]
     df.to_csv(f"../qs_data/{code}.csv")
 
 

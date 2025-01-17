@@ -292,7 +292,7 @@ class Portfolio(object):
         return holdings
 
     def update_market_value_of_asset(
-        self, asset, current_price, current_dt
+        self, asset, current_price, current_adjust_price, current_dt
     ):
         """
         Update the market value of the asset to the current
@@ -319,7 +319,7 @@ class Portfolio(object):
                 )
 
             self.pos_handler.positions[asset].update_current_price(
-                current_price, current_dt
+                current_price, current_adjust_price, current_dt
             )
 
     def history_to_df(self):

@@ -44,16 +44,16 @@ class SimulatedBroker(Broker):
     """
 
     def __init__(
-        self,
-        start_dt,
-        exchange,
-        data_handler,
-        account_id=None,
-        base_currency="USD",
-        initial_funds=0.0,
-        fee_model=ZeroFeeModel(),
-        slippage_model=None,
-        market_impact_model=None
+            self,
+            start_dt,
+            exchange,
+            data_handler,
+            account_id=None,
+            base_currency="USD",
+            initial_funds=0.0,
+            fee_model=ZeroFeeModel(),
+            slippage_model=None,
+            market_impact_model=None
     ):
         self.start_dt = start_dt
         self.exchange = exchange
@@ -558,11 +558,11 @@ class SimulatedBroker(Broker):
         # Obtain a price for the asset, if no price then
         # raise a ValueError
         price_err_msg = (
-            "Could not obtain a latest market price for "
-            "Asset with ticker symbol '%s'. Order with ID '%s' was "
-            "not executed." % (
-                order.asset, order.order_id
-            )
+                "Could not obtain a latest market price for "
+                "Asset with ticker symbol '%s'. Order with ID '%s' was "
+                "not executed." % (
+                    order.asset, order.order_id
+                )
         )
         bid_ask = self.data_handler.get_asset_latest_bid_ask_price(
             dt, order.asset
@@ -576,6 +576,8 @@ class SimulatedBroker(Broker):
             price = bid_ask[1]
         else:
             price = bid_ask[0]
+
+        adjust_price = self.data_handler.get_adjust_price(dt, order.asset)
         consideration = round(price * order.quantity)
         total_commission = self.fee_model.calc_total_cost(
             order.asset, order.quantity, consideration, self
@@ -598,7 +600,7 @@ class SimulatedBroker(Broker):
         # Create a transaction entity and update the portfolio
         txn = Transaction(
             order.asset, scaled_quantity, self.current_dt,
-            price, order.order_id, commission=total_commission
+            price, order.order_id, commission=total_commission, adjust_price=adjust_price
         )
         self.portfolios[portfolio_id].transact_asset(txn)
         if settings.PRINT_EVENTS:
@@ -663,11 +665,10 @@ class SimulatedBroker(Broker):
             for asset in self.portfolios[portfolio].pos_handler.positions:
                 if not self.data_handler.is_asset_trading_date(asset, dt):
                     continue
-                mid_price = self.data_handler.get_asset_latest_mid_price(
-                    dt, asset
-                )
+                mid_price = self.data_handler.get_asset_latest_mid_price(dt, asset)
+                adjust_price = self.data_handler.get_adjust_price(dt, asset)
                 self.portfolios[portfolio].update_market_value_of_asset(
-                    asset, mid_price, self.current_dt
+                    asset, mid_price, adjust_price, self.current_dt
                 )
 
         # Try to execute orders

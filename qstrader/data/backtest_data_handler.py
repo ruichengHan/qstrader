@@ -68,6 +68,17 @@ class BacktestDataHandler(object):
         bid = self.get_asset_latest_bid_price(dt, asset_symbol)
         return (bid, bid)
 
+    def get_adjust_price(self, dt, asset_symbol):
+        for ds in self.data_sources:
+            try:
+                bid = ds.get_adjust_close(dt, asset_symbol)
+                if not np.isnan(bid):
+                    return bid
+            except Exception:
+                bid = np.nan
+        return bid
+
+
     def get_asset_latest_mid_price(self, dt, asset_symbol):
         """
         """

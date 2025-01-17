@@ -210,6 +210,18 @@ class CSVDailyBarDataSource(object):
             return np.nan
 
     @functools.lru_cache(maxsize=1024 * 1024)
+    def get_adjust_close(self, dt, asset):
+        try:
+            df = self.asset_bar_frames[asset]
+            date = dt.strftime("%Y-%m-%d")
+            row = df.loc[date]
+            return row["adjust_close"]
+        except:
+            import traceback
+            traceback.print_exc()
+            return np.nan
+
+    @functools.lru_cache(maxsize=1024 * 1024)
     def get_ask(self, dt, asset):
         """
         Obtain the ask price of an asset at the provided timestamp.

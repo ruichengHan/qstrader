@@ -34,16 +34,16 @@ class PortfolioConstructionModel(object):
     """
 
     def __init__(
-        self,
-        broker,
-        broker_portfolio_id,
-        universe,
-        order_sizer,
-        optimiser,
-        alpha_model=None,
-        risk_model=None,
-        cost_model=None,
-        data_handler=None,
+            self,
+            broker,
+            broker_portfolio_id,
+            universe,
+            order_sizer,
+            optimiser,
+            alpha_model=None,
+            risk_model=None,
+            cost_model=None,
+            data_handler=None,
     ):
         self.broker = broker
         self.broker_portfolio_id = broker_portfolio_id
@@ -152,10 +152,10 @@ class PortfolioConstructionModel(object):
         return self.broker.get_portfolio_as_dict(self.broker_portfolio_id)
 
     def _generate_rebalance_orders(
-        self,
-        dt,
-        target_portfolio,
-        current_portfolio
+            self,
+            dt,
+            target_portfolio,
+            current_portfolio
     ):
         """
         Creates an incremental list of rebalancing Orders from the provided
@@ -277,8 +277,9 @@ class PortfolioConstructionModel(object):
             full_zero_weights, optimised_weights
         )
         if settings.PRINT_EVENTS:
+            print_weights = dict(filter(lambda x: x[1] > 0, full_weights.items()))
             print(
-                "(%s) - target weights: %s" % (dt, full_weights)
+                "(%s) - target weights: %s" % (dt, print_weights)
             )
 
         # TODO: Improve this with a full statistics logging handler
