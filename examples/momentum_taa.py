@@ -153,7 +153,7 @@ def get_symbols():
     for root, dirs, files in os.walk(folder_path):
         for file_name in files:
             out.append(file_name.split(".")[0])
-    return out[:10]
+    return out
 
 
 if __name__ == "__main__":
@@ -164,7 +164,7 @@ if __name__ == "__main__":
 
     # Model parameters
     mom_lookback = 126  # Six months worth of business days
-    mom_top_n = 3  # Number of assets to include at any one time
+    mom_top_n = 10  # Number of assets to include at any one time
 
     # Construct the symbols and assets necessary for the backtest
     # This utilises the SPDR US sector ETFs, all beginning with XL
@@ -204,7 +204,8 @@ if __name__ == "__main__":
         long_only=True,
         cash_buffer_percentage=0.01,
         burn_in_dt=burn_in_dt,
-        data_handler=strategy_data_handler
+        data_handler=strategy_data_handler,
+        memo_path="strategy.csv"
     )
     strategy_backtest.run(True)
 
@@ -226,7 +227,8 @@ if __name__ == "__main__":
         rebalance='buy_and_hold',
         long_only=True,
         cash_buffer_percentage=0.01,
-        data_handler=benchmark_data_handler
+        data_handler=benchmark_data_handler,
+        memo_path="benchmark.csv"
     )
     benchmark_backtest.run()
 

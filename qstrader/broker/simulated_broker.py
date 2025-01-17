@@ -3,6 +3,7 @@ import queue
 import numpy as np
 
 from qstrader import settings
+from qstrader.broker.OrderMemo import OrderMemo
 from qstrader.broker.broker import Broker
 from qstrader.broker.fee_model.fee_model import FeeModel
 from qstrader.broker.portfolio.portfolio import Portfolio
@@ -53,7 +54,8 @@ class SimulatedBroker(Broker):
             initial_funds=0.0,
             fee_model=ZeroFeeModel(),
             slippage_model=None,
-            market_impact_model=None
+            market_impact_model=None,
+            memo_path="memo.csv"
     ):
         self.start_dt = start_dt
         self.exchange = exchange
@@ -70,6 +72,8 @@ class SimulatedBroker(Broker):
         self.cash_balances = self._set_cash_balances()
         self.portfolios = self._set_initial_portfolios()
         self.open_orders = self._set_initial_open_orders()
+
+        self.order_memo = OrderMemo(memo_path)
 
         if settings.PRINT_EVENTS:
             print('Initialising simulated broker "%s"...' % self.account_id)
@@ -612,6 +616,8 @@ class SimulatedBroker(Broker):
                     consideration + total_commission
                 )
             )
+        self.order_memo.log_transaction(txn)
+
 
     def submit_order(self, portfolio_id, order):
         """
@@ -685,3 +691,6 @@ class SimulatedBroker(Broker):
                 for portfolio, order in sorted_orders:
                     if self.data_handler.is_asset_trading_date(order.asset, dt):
                         self._execute_order(dt, portfolio, order)
+
+    def close(self):
+        self.order_memo.close()

@@ -100,7 +100,7 @@ class BacktestTradingSession(TradingSession):
 
         self.exchange = self._create_exchange()
         self.data_handler = self._create_data_handler(data_handler)
-        self.broker = self._create_broker()
+        self.broker = self._create_broker(kwargs["memo_path"])
         self.sim_engine = self._create_simulation_engine()
 
         if rebalance == 'weekly':
@@ -192,7 +192,7 @@ class BacktestTradingSession(TradingSession):
         )
         return data_handler
 
-    def _create_broker(self):
+    def _create_broker(self, memo_path):
         """
         Create the SimulatedBroker with an appropriate default
         portfolio identifiers.
@@ -208,7 +208,8 @@ class BacktestTradingSession(TradingSession):
             self.data_handler,
             account_id=self.account_name,
             initial_funds=self.initial_cash,
-            fee_model=self.fee_model
+            fee_model=self.fee_model,
+            memo_path=memo_path
         )
         broker.create_portfolio(self.portfolio_id, self.portfolio_name)
         broker.subscribe_funds_to_portfolio(self.portfolio_id, self.initial_cash)
@@ -431,3 +432,4 @@ class BacktestTradingSession(TradingSession):
 
         if settings.PRINT_EVENTS:
             print("Ending backtest simulation.")
+            self.broker.close()
