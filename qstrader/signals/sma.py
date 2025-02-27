@@ -59,3 +59,11 @@ class SMASignal(Signal):
             The trend (SMA) for the period.
         """
         return self._simple_moving_average(asset, lookback)
+
+    def diff(self, asset, lookback):
+        prices = self.buffers.prices['%s_%s' % (asset, lookback)]
+        if len(prices) < 1:
+            return None
+        today_price = prices[-1]
+        sma = self._simple_moving_average(asset, lookback)
+        return today_price - sma

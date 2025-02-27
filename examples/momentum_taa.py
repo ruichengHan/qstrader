@@ -1,4 +1,3 @@
-import operator
 import os
 
 import pandas as pd
@@ -11,14 +10,14 @@ from qstrader.asset.universe.dynamic import DynamicUniverse
 from qstrader.asset.universe.static import StaticUniverse
 from qstrader.data.backtest_data_handler import BacktestDataHandler
 from qstrader.data.daily_bar_csv import CSVDailyBarDataSource
-from qstrader.signals.momentum import MomentumSignal
+from qstrader.signals.rsi import RSISignal, CumulateRSISignal
 from qstrader.signals.signals_collection import SignalsCollection
+from qstrader.signals.sma import SMASignal
 from qstrader.statistics.tearsheet import TearsheetStatistics
 from qstrader.trading.backtest import BacktestTradingSession
 
 
-class TopNMomentumAlphaModel(AlphaModel):
-
+class CustomModel(AlphaModel):
     def __init__(
             self, signals, mom_lookback, mom_top_n, universe, data_handler
     ):
@@ -51,75 +50,31 @@ class TopNMomentumAlphaModel(AlphaModel):
         self.universe = universe
         self.data_handler = data_handler
 
-    def _highest_momentum_asset(
-            self, dt
-    ):
-        """
-        Calculates the ordered list of highest performing momentum
-        assets restricted to the 'Top N', for a particular datetime.
+    def calculate_weight(self, dt):
+        signal_list = [self.cal_signals(asset) for asset in assets]
+        filter_asset_list = list(filter(lambda x: x["sma"] is not None and x["sma"] > 0 and x["rsi"] < 2, signal_list))
+        out = list(map(lambda x: x["asset"], sorted(filter_asset_list, key=lambda x: x["rsi"])))
+        if len(out) > self.mom_top_n:
+            return out[:self.mom_top_n]
+        else:
+            return out
 
-        Parameters
-        ----------
-        dt : `pd.Timestamp`
-            The datetime for which the highest momentum assets
-            should be calculated.
-
-        Returns
-        -------
-        `list[str]`
-            Ordered list of highest performing momentum assets
-            restricted to the 'Top N'.
-        """
-        assets = self.signals['momentum'].assets
-
-        # Calculate the holding-period return momenta for each asset,
-        # for the particular provided momentum lookback period
-        all_momenta = {
-            asset: self.signals['momentum'](
-                asset, self.mom_lookback
-            ) for asset in assets
+    def cal_signals(self, asset):
+        j = {
+            "asset": asset,
+            "rsi": self.signals["rsi"](asset, self.mom_lookback),
+            "sma": self.signals["sma"].diff(asset, self.mom_lookback)
         }
+        return j
 
-        # Obtain a list of the top performing assets by momentum
-        # restricted by the provided number of desired assets to
-        # trade per month
-        return [
-                   asset[0] for asset in sorted(
-                all_momenta.items(),
-                key=operator.itemgetter(1),
-                reverse=True
-            )
-               ][:self.mom_top_n]
+    def _generate_signals(self, dt, weights):
 
-    def _generate_signals(
-            self, dt, weights
-    ):
-        """
-        Calculate the highest performing momentum for each
-        asset then assign 1 / N of the signal weight to each
-        of these assets.
-
-        Parameters
-        ----------
-        dt : `pd.Timestamp`
-            The datetime for which the signal weights
-            should be calculated.
-        weights : `dict{str: float}`
-            The current signal weights dictionary.
-
-        Returns
-        -------
-        `dict{str: float}`
-            The newly created signal weights dictionary.
-        """
-        top_assets = self._highest_momentum_asset(dt)
+        top_assets = self.calculate_weight(dt)
         for asset in top_assets:
             weights[asset] = 1.0 / self.mom_top_n
         return weights
 
-    def __call__(
-            self, dt
-    ):
+    def __call__(self, dt):
         """
         Calculates the signal weights for the top N
         momentum alpha model, assuming that there is
@@ -147,10 +102,12 @@ class TopNMomentumAlphaModel(AlphaModel):
         return weights
 
 
+csv_dir = '/Users/rui.chengcr/PycharmProjects/qstrader/qs_data/price/'
+
+
 def get_symbols():
-    folder_path = "../qs_data/"
     out = []
-    for root, dirs, files in os.walk(folder_path):
+    for root, dirs, files in os.walk(csv_dir):
         for file_name in files:
             out.append(file_name.split(".")[0])
     return out
@@ -164,7 +121,7 @@ if __name__ == "__main__":
 
     # Model parameters
     mom_lookback = 126  # Six months worth of business days
-    mom_top_n = 10  # Number of assets to include at any one time
+    mom_top_n = 20  # Number of assets to include at any one time
 
     # Construct the symbols and assets necessary for the backtest
     # This utilises the SPDR US sector ETFs, all beginning with XL
@@ -179,19 +136,18 @@ if __name__ == "__main__":
 
     # To avoid loading all CSV files in the directory, set the
     # data source to load only those provided symbols
-    csv_dir = os.environ.get('QSTRADER_CSV_DATA_DIR', '/Users/rui.chengcr/PycharmProjects/qstrader/qs_data/')
     strategy_data_source = CSVDailyBarDataSource(csv_dir, Equity, csv_symbols=strategy_symbols)
     strategy_data_handler = BacktestDataHandler(strategy_universe, data_sources=[strategy_data_source])
 
     # Generate the signals (in this case holding-period return based
     # momentum) used in the top-N momentum alpha model
-    momentum = MomentumSignal(start_dt, strategy_universe, lookbacks=[mom_lookback])
-    signals = SignalsCollection({'momentum': momentum}, strategy_data_handler)
+    rsi = RSISignal(start_dt, strategy_universe, lookbacks=[mom_lookback])
+    cumulate_rsi = CumulateRSISignal(start_dt, strategy_universe, lookbacks=[mom_lookback])
+    sma = SMASignal(start_dt, strategy_universe, lookbacks=[mom_lookback])
+    signals = SignalsCollection({"rsi": rsi, "sma": sma, "cu_rsi": cumulate_rsi}, strategy_data_handler)
 
     # Generate the alpha model instance for the top-N momentum alpha model
-    strategy_alpha_model = TopNMomentumAlphaModel(
-        signals, mom_lookback, mom_top_n, strategy_universe, strategy_data_handler
-    )
+    strategy_alpha_model = CustomModel(signals, mom_lookback, mom_top_n, strategy_universe, strategy_data_handler)
 
     # Construct the strategy backtest and run it
     strategy_backtest = BacktestTradingSession(
@@ -200,7 +156,8 @@ if __name__ == "__main__":
         strategy_universe,
         strategy_alpha_model,
         signals=signals,
-        rebalance='end_of_month',
+        rebalance='weekly',
+        rebalance_weekday="MON",
         long_only=True,
         cash_buffer_percentage=0.01,
         burn_in_dt=burn_in_dt,

@@ -40,10 +40,10 @@ def get_stock_his(code, start, end):
 def get_index_his(code):
     df = ak.stock_zh_index_daily(symbol=code)
     df["adjust_close"] = df["close"]
-    df.to_csv(f"../qs_data/{code}.csv")
+    df.to_csv(f"../qs_data/price/{code}.csv")
 
 
-def download_stock():
+def download_stock_price():
     stock_300 = get_index_stock('000300')
     stock_500 = get_index_stock('399905')
     all_stock = sorted(set(stock_300 + stock_500))
@@ -56,6 +56,6 @@ def download_stock():
         if cnt % 10 == 0:
             print('cnt = ', cnt)
         output = get_stock_his(code, "20160101", "20250101")
-        output.to_csv(f"../qs_data/{code}.csv")
+        output.to_csv(f"../qs_data/price/{code}.csv")
 
 get_index_his("sh000300")
