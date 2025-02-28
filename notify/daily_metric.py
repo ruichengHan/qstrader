@@ -1,27 +1,42 @@
 import json
 import os
+import sys
 
 import akshare as ak
 import lark_oapi as lark
+import numpy as np
 import talib
 from lark_oapi.api.im.v1 import *
 
 
 def get_index_stock(code):
+    # 拿历史
     df = ak.stock_zh_index_daily(symbol=code)
     df["date"] = df["date"].apply(lambda x: x.strftime("%Y-%m-%d"))
-    df = df[df["date"] >= "2016-01-01"]
-    return df
-
-
-def run(code):
-    df = get_index_stock(code)
-    date = df["date"].to_numpy()[-1]
+    df = df[df["date"] >= "2020-01-01"]
     close = df["close"].to_numpy()
+
+    # 拿最新的
+    current = ak.stock_zh_index_spot_sina()
+    current = current[current["代码"] == code]
+    current_price = current["最新价"].to_numpy()
+
+    return np.concatenate((close, current_price))
+
+
+def run(code, mode):
+    close = get_index_stock(code)
     rsi = talib.RSI(close, timeperiod=2)
     today_rsi = rsi[-1]
     cumulate_rsi = rsi[-1] + rsi[-2] + rsi[-3]
-    return "\t".join([date, code, "当天RSI2: %.1lf" % today_rsi, "3d累积RSI2: %.1lf" % cumulate_rsi])
+    output = "\t".join([code, "当天RSI2: %.1lf" % today_rsi, "3d累积RSI2: %.1lf" % cumulate_rsi])
+    # 如果是daily的，那就默认发一次
+    if mode == "day":
+        return output
+    # 小时级的默认只有需要再发
+    if mode == "hour" and today_rsi < 5:
+        return output
+    return ""
 
 
 def send_msg(msg):
@@ -42,13 +57,13 @@ def send_msg(msg):
                       .content(content)
                       .build()).build()
 
-    response: CreateMessageResponse = client.im.v1.message.create(request)
-    if not response.success():
-        lark.logger.error(
-            f"client.im.v1.message.create failed, code: {response.code}, msg: {response.msg}, log_id: {response.get_log_id()}, resp: \n{json.dumps(json.loads(response.raw.content), indent=4, ensure_ascii=False)}")
+    client.im.v1.message.create(request)
+
 
 if __name__ == '__main__':
+    mode = sys.argv[1]
     codes = ["sh000300", "sz399905"]
-    out = [run(code) for code in codes]
+    out = [run(code, mode) for code in codes]
     msg = "\n".join(out)
-    send_msg(msg)
+    if len(msg) > 10:
+        send_msg(msg)
