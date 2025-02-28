@@ -26,8 +26,8 @@ def run(code):
 
 def send_msg(msg):
     # 创建client
-    app_id = os.environ["app_id"]
-    secret = os.environ["app_secret"]
+    app_id = os.environ["lark_app_id"]
+    secret = os.environ["lark_app_secret"]
     client = lark.Client.builder().app_id(app_id).app_secret(secret).log_level(lark.LogLevel.DEBUG).build()
 
     # 构造请求对象
