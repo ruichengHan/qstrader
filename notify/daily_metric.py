@@ -1,4 +1,5 @@
 import json
+import os
 
 import akshare as ak
 import lark_oapi as lark
@@ -25,11 +26,9 @@ def run(code):
 
 def send_msg(msg):
     # 创建client
-    client = lark.Client.builder() \
-        .app_id("cli_a7354928843e500e") \
-        .app_secret("YHgL1uCR8hDPwcyklEdf9fekA8bJQ5wX") \
-        .log_level(lark.LogLevel.DEBUG) \
-        .build()
+    app_id = os.environ["app_id"]
+    secret = os.environ["app_secret"]
+    client = lark.Client.builder().app_id(app_id).app_secret(secret).log_level(lark.LogLevel.DEBUG).build()
 
     # 构造请求对象
     content = json.dumps({"text": msg})
@@ -47,7 +46,6 @@ def send_msg(msg):
     if not response.success():
         lark.logger.error(
             f"client.im.v1.message.create failed, code: {response.code}, msg: {response.msg}, log_id: {response.get_log_id()}, resp: \n{json.dumps(json.loads(response.raw.content), indent=4, ensure_ascii=False)}")
-
 
 if __name__ == '__main__':
     codes = ["sh000300", "sz399905"]
