@@ -60,4 +60,7 @@ class SignalsCollection(object):
                 if self.data_handler.is_asset_trading_date(asset, dt):
                     price = self.data_handler.get_asset_latest_mid_price(dt, asset)
                     self.signals[name].append(asset, price)
+
+                    info = self.data_handler.get_asset_today_info(dt, asset)
+                    self.signals[name].append_info(asset, info)
         self.warmup += 1

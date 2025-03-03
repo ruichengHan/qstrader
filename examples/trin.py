@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import pytz
 
@@ -8,57 +10,84 @@ from qstrader.asset.universe.dynamic import DynamicUniverse
 from qstrader.asset.universe.static import StaticUniverse
 from qstrader.data.backtest_data_handler import BacktestDataHandler
 from qstrader.data.daily_bar_csv import CSVDailyBarDataSource
+from qstrader.signals.direction_volume import DirectionVolumeSignal
 from qstrader.signals.rsi import RSISignal, CumulateRSISignal
 from qstrader.signals.signals_collection import SignalsCollection
 from qstrader.statistics.tearsheet import TearsheetStatistics
-from qstrader.trading.one_backtest import OneBacktestTradingSession
 from qstrader.trading.backtest import BacktestTradingSession
+from qstrader.trading.one_backtest import OneBacktestTradingSession
 
 
 class IndexBuyModel(AlphaModel):
-    def calculate_weight(self, assets):
-        signal_list = [self.cal_signals(asset) for asset in assets]
-        filter_asset_list = list(filter(lambda x: 0 < x["cu_rsi"] < 65, signal_list))
-        out = list(map(lambda x: x["asset"], sorted(filter_asset_list, key=lambda x: x["rsi"])))
-        return out
-
     def cal_signals(self, asset):
         j = {
             "asset": asset,
             "rsi": self.signals["rsi"](asset, self.mom_lookback),
-            "cu_rsi": self.signals["cu_rsi"](asset, self.mom_lookback)
+            "cu_rsi": self.signals["cu_rsi"](asset, self.mom_lookback),
+            "d_vol": self.signals["d_vol"](asset, 2)
         }
         return j
 
-    def __init__(self, signals, mom_lookback, universe, data_handler):
+    def __init__(self, signals, mom_lookback, universe, data_handler, index_stock):
         self.signals = signals
         self.mom_lookback = mom_lookback
         self.universe = universe
         self.data_handler = data_handler
+        self.index_stock = index_stock
+        self.trin_in_row = 0
 
-    def _generate_signals(self, assets, weights):
-        top_assets = self.calculate_weight(assets)
-        for asset in top_assets:
-            weights[asset] = 1
-        return weights
+    def _generate_signals(self, assets):
+        advanced_stocks = 0
+        decline_stocks = 0
+        advance_volume = 0
+        decline_volume = 0
+        rsi2 = -1
+        cu_rsi = -1
+        for asset in assets:
+            j = self.cal_signals(asset)
+            if asset == self.index_stock:
+                rsi2 = self.cal_signals(asset)["rsi"]
+                cu_rsi = self.cal_signals(asset)["cu_rsi"]
+            else:
+                d_vol = j["d_vol"]
+                if d_vol is None:
+                    continue
+                if d_vol > 0:
+                    advance_volume += d_vol
+                    advanced_stocks += 1
+                elif d_vol < 0:
+                    decline_volume -= d_vol
+                    decline_stocks += 1
+        if advanced_stocks * decline_stocks * advance_volume * decline_volume == 0:
+            return []
+        trin = (advanced_stocks * 1.0 / decline_stocks) / (advance_volume * 1.0 / decline_volume)
+
+        if trin > 1:
+            self.trin_in_row += 1
+        else:
+            self.trin_in_row = 0
+
+        if rsi2 < 50 and self.trin_in_row >= 3:
+            return [self.index_stock]
+        if cu_rsi < 65:
+            return [self.index_stock]
+        return []
 
     def __call__(self, dt):
         assets = self.universe.get_assets(dt)
-        weights = {asset: 0.0 for asset in assets}
 
         # Only generate weights if the current time exceeds the
         # momentum lookback period
         if self.signals.warmup >= self.mom_lookback:
-            weights = self._generate_signals(assets, weights)
-        return weights
+            weights = self._generate_signals(assets)
+            if weights:
+                return {self.index_stock: 1}
+            else:
+                return {self.index_stock: 0}
+        return {self.index_stock: 0}
 
 
 class IndexSellModel(AlphaModel):
-    def calculate_weight(self, assets):
-        signal_list = [self.cal_signals(asset) for asset in assets]
-        filter_asset_list = list(filter(lambda x: x["rsi"] >= 75, signal_list))
-        out = list(map(lambda x: x["asset"], sorted(filter_asset_list, key=lambda x: x["rsi"])))
-        return out
 
     def cal_signals(self, asset):
         j = {
@@ -67,39 +96,59 @@ class IndexSellModel(AlphaModel):
         }
         return j
 
-    def __init__(self, signals, mom_lookback, universe, data_handler):
+    def __init__(self, signals, mom_lookback, universe, data_handler, index_stock):
         self.signals = signals
         self.mom_lookback = mom_lookback
         self.universe = universe
         self.data_handler = data_handler
-
-    def _generate_signals(self, assets, weights):
-        top_assets = self.calculate_weight(assets)
-        for asset in top_assets:
-            weights[asset] = 1
-        return weights
+        self.index_stock = index_stock
 
     def __call__(self, dt):
-        assets = self.universe.get_assets(dt)
-        weights = {asset: 0.0 for asset in assets}
+        weights = {self.index_stock: 0}
 
         # Only generate weights if the current time exceeds the
         # momentum lookback period
         if self.signals.warmup >= self.mom_lookback:
-            weights = self._generate_signals(assets, weights)
+            signal = self.cal_signals(self.index_stock)
+            if signal["rsi"] >= 75:
+                weights[self.index_stock] = 1
         return weights
 
 
 csv_dir = '/Users/rui.chengcr/PycharmProjects/qstrader/qs_data/price/'
 
 
+def get_index_stock(index_code="000300", year='20218'):
+    """
+    获取一个指数的成分股
+    Parameters
+    ----------
+    index_code
+    year
+
+    Returns
+    -------
+
+    """
+    import akshare as ak
+    index_stock_cons_csindex_df = ak.index_stock_cons(symbol=index_code)
+    filter_df = index_stock_cons_csindex_df[index_stock_cons_csindex_df["纳入日期"] < str(year)]
+    out = []
+    for code in filter_df["品种代码"].to_list():
+        out.append(code)
+    return out
+
+
 def get_symbols():
-    return ["sh000300"]
-    # out = []
-    # for root, dirs, files in os.walk(csv_dir):
-    #     for file_name in files:
-    #         out.append(file_name.split(".")[0])
-    # return out
+    stock_list = set(get_index_stock())
+    out = []
+    for root, dirs, files in os.walk(csv_dir):
+        for file_name in files:
+            out.append(file_name.split(".")[0])
+
+    out = list(filter(lambda x: x in stock_list, out))
+    out.append("sh000300")
+    return out
 
 
 if __name__ == "__main__":
@@ -131,12 +180,14 @@ if __name__ == "__main__":
     # Generate the signals (in this case holding-period return based
     # momentum) used in the top-N momentum alpha model
     rsi = RSISignal(start_dt, strategy_universe, lookbacks=[mom_lookback])
+    d_vol = DirectionVolumeSignal(start_dt, strategy_universe, lookbacks=[2])
     cumulate_rsi = CumulateRSISignal(start_dt, strategy_universe, lookbacks=[mom_lookback])
-    signals = SignalsCollection({"rsi": rsi, "cu_rsi": cumulate_rsi}, strategy_data_handler)
+
+    signals = SignalsCollection({"rsi": rsi, "d_vol": d_vol, "cu_rsi": cumulate_rsi}, strategy_data_handler)
 
     # Generate the alpha model instance for the top-N momentum alpha model
-    buy_model = IndexBuyModel(signals, mom_lookback, strategy_universe, strategy_data_handler)
-    sell_model = IndexSellModel(signals, mom_lookback, strategy_universe, strategy_data_handler)
+    buy_model = IndexBuyModel(signals, mom_lookback, strategy_universe, strategy_data_handler, "EQ:sh000300")
+    sell_model = IndexSellModel(signals, mom_lookback, strategy_universe, strategy_data_handler, "EQ:sh000300")
 
     # Construct the strategy backtest and run it
     strategy_backtest = OneBacktestTradingSession(
@@ -148,7 +199,7 @@ if __name__ == "__main__":
         signals=signals,
         rebalance='daily',
         long_only=True,
-        cash_buffer_percentage=0.01,
+        cash_buffer_percentage=0,
         burn_in_dt=burn_in_dt,
         data_handler=strategy_data_handler,
         memo_path="strategy.csv"
@@ -181,6 +232,6 @@ if __name__ == "__main__":
     tearsheet = TearsheetStatistics(
         strategy_equity=strategy_backtest.get_equity_curve(),
         benchmark_equity=benchmark_backtest.get_equity_curve(),
-        title='US Sector Momentum - Top 3 Sectors'
+        title='TRIN'
     )
     tearsheet.plot_results()

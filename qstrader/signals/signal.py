@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 
 from qstrader.signals.buffer import AssetPriceBuffers
+from qstrader.signals.info_buffer import AssetInfoBuffers
 
 
 class Signal(object):
@@ -26,6 +27,7 @@ class Signal(object):
         self.lookbacks = lookbacks
         self.assets = self.universe.get_assets(start_dt)
         self.buffers = self._create_asset_price_buffers()
+        self.info_buffers = self._create_asset_info_buffers()
 
     def _create_asset_price_buffers(self):
         """
@@ -36,9 +38,10 @@ class Signal(object):
         `AssetPriceBuffers`
             Stores the asset price buffers for the signal.
         """
-        return AssetPriceBuffers(
-            self.assets, lookbacks=self.lookbacks
-        )
+        return AssetPriceBuffers(self.assets, lookbacks=self.lookbacks)
+
+    def _create_asset_info_buffers(self):
+        return AssetInfoBuffers(self.assets, lookbacks=self.lookbacks)
 
     def append(self, asset, price):
         """
@@ -53,6 +56,20 @@ class Signal(object):
             The new price of the asset.
         """
         self.buffers.append(asset, price)
+
+    def append_info(self, asset, info):
+        """
+        推一个dict，而不是一个简单的price
+        Parameters
+        ----------
+        asset : str
+        info : dict
+
+        Returns
+        -------
+
+        """
+        self.info_buffers.append(asset, info)
 
     def update_assets(self, dt):
         """

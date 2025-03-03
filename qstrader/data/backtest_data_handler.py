@@ -90,6 +90,15 @@ class BacktestDataHandler(object):
             mid = np.nan
         return mid
 
+    def get_asset_today_info(self, dt, asset_symbol):
+        for ds in self.data_sources:
+            try:
+                info = ds.get_all_info(dt, asset_symbol)
+                return info.to_dict()
+            except Exception:
+                pass
+        return {}
+
     def get_assets_historical_range_close_price(
         self, start_dt, end_dt, asset_symbols, adjusted=False
     ):

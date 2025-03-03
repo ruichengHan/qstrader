@@ -198,6 +198,23 @@ class CSVDailyBarDataSource(object):
         """
         return self.get_close(dt, asset)
 
+    def get_all_info(self, dt, asset):
+        """
+
+        Parameters
+        ----------
+        dt
+        asset
+
+        Returns
+        -------
+        pd.Series
+        """
+        df = self.asset_bar_frames[asset]
+        date = dt.strftime("%Y-%m-%d")
+        row = df.loc[date]
+        return row
+
     def get_close(self, dt, asset):
         try:
             df = self.asset_bar_frames[asset]
