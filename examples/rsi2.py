@@ -95,11 +95,6 @@ csv_dir = '/Users/rui.chengcr/PycharmProjects/qstrader/qs_data/price/'
 
 def get_symbols():
     return ["sh000300"]
-    # out = []
-    # for root, dirs, files in os.walk(csv_dir):
-    #     for file_name in files:
-    #         out.append(file_name.split(".")[0])
-    # return out
 
 
 if __name__ == "__main__":

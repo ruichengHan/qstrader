@@ -62,7 +62,7 @@ def send_msg(msg):
 
 if __name__ == '__main__':
     mode = sys.argv[1]
-    codes = ["sh000300", "sz399905"]
+    codes = ["sh000300"]
     out = [run(code, mode) for code in codes]
     msg = "\n".join(out)
     if len(msg) > 10:
