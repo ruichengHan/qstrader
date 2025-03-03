@@ -1,3 +1,4 @@
+import datetime
 import json
 import os
 import sys
@@ -13,7 +14,9 @@ def get_index_stock(code):
     # 拿历史
     df = ak.stock_zh_index_daily(symbol=code)
     df["date"] = df["date"].apply(lambda x: x.strftime("%Y-%m-%d"))
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
     df = df[df["date"] >= "2020-01-01"]
+    df = df[df["date"] < today]
     close = df["close"].to_numpy()
 
     # 拿最新的
