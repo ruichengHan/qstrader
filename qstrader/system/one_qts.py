@@ -65,7 +65,8 @@ class OneQuantTradingSystem(object):
             self.broker,
             self.broker_portfolio_id,
             self.data_handler,
-            cash_buffer_percentage=0
+            cash_buffer_percentage=0,
+            trade_percent=1
         )
         return order_sizer
 

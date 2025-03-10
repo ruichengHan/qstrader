@@ -618,7 +618,6 @@ class SimulatedBroker(Broker):
             )
         self.order_memo.log_transaction(txn)
 
-
     def submit_order(self, portfolio_id, order):
         """
         Execute an Order instance against the sub-portfolio
@@ -694,3 +693,26 @@ class SimulatedBroker(Broker):
 
     def close(self):
         self.order_memo.close()
+
+    def get_portfolio_cash(self, portfolio_id):
+        """
+        Returns the current total equity of a Portfolio
+        with ID 'portfolio_id'.
+
+        Parameters
+        ----------
+        portfolio_id : `str`
+            The portfolio ID string.
+
+        Returns
+        -------
+        `float`
+            The total equity of the portfolio.
+        """
+        if portfolio_id not in self.portfolios.keys():
+            raise KeyError(
+                "Portfolio with ID '%s' does not exist. "
+                "Cannot return total equity for a "
+                "non-existent portfolio." % portfolio_id
+            )
+        return self.portfolios[portfolio_id].cash

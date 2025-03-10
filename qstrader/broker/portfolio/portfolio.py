@@ -103,6 +103,13 @@ class Portfolio(object):
         return self.total_market_value + self.cash
 
     @property
+    def total_cash(self):
+        """
+        Obtain the total market value of the portfolio including cash.
+        """
+        return self.cash
+
+    @property
     def total_unrealised_pnl(self):
         """
         Calculate the sum of all the positions' unrealised P&Ls.

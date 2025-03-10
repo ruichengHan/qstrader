@@ -18,7 +18,7 @@ from qstrader.trading.backtest import BacktestTradingSession
 class IndexBuyModel(AlphaModel):
     def calculate_weight(self, assets):
         signal_list = [self.cal_signals(asset) for asset in assets]
-        filter_asset_list = list(filter(lambda x: 0 < x["cu_rsi"] < 65, signal_list))
+        filter_asset_list = list(filter(lambda x: 0 < x["rsi"] < 5 or 0 < x["cu_rsi"] < 65, signal_list))
         out = list(map(lambda x: x["asset"], sorted(filter_asset_list, key=lambda x: x["rsi"])))
         return out
 

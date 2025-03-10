@@ -50,8 +50,8 @@ class OnePortfolioConstructionModel(object):
         # buy mode
         buy_weights = self.buy_model(dt)
         buy_portfolio = self._generate_target_portfolio(dt, buy_weights)
-        for asset in current_portfolio:
-            buy_portfolio.pop(asset)
+        # for asset in current_portfolio:
+        #     buy_portfolio.pop(asset)
         sell_weights = self.sell_model(dt)
         sell_portfolio = {}
         for asset in current_portfolio.keys():

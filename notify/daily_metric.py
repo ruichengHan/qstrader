@@ -32,12 +32,16 @@ def run(code, mode):
     rsi = talib.RSI(close, timeperiod=2)
     today_rsi = rsi[-1]
     cumulate_rsi = rsi[-1] + rsi[-2] + rsi[-3]
-    output = "\t".join([code, "\n当天RSI2: <b>%.1lf</b>" % today_rsi, "\n3d累积RSI2: <b>%.1lf</b>" % cumulate_rsi])
+    diff = (close[-1] / close[-2] - 1) * 100
+    output = "\n".join([code, "当天价格: <b>%.1f</b> (%s%.2f%s)" % (close[-1], "+" if diff > 0 else "-", abs(diff), "%"), "RSI2: <b>%.1lf</b>" % today_rsi,
+                        "3d累积RSI2: <b>%.1lf</b>" % cumulate_rsi])
     # 如果是daily的，那就默认发一次
     if mode == "day":
         return output
     # 小时级的默认只有需要再发
-    if mode == "hour" and today_rsi < 5:
+    if mode == "hour" and (today_rsi < 5 or cumulate_rsi < 65):
+        return output
+    if mode == "sell" and today_rsi > 75:
         return output
     return ""
 

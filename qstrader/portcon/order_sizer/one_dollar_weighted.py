@@ -32,7 +32,8 @@ class OneDollarWeightedCashBufferedOrderSizer(OrderSizer):
         broker,
         broker_portfolio_id,
         data_handler,
-        cash_buffer_percentage=0.05
+        cash_buffer_percentage=0.05,
+        trade_percent=1
     ):
         self.broker = broker
         self.broker_portfolio_id = broker_portfolio_id
@@ -40,6 +41,7 @@ class OneDollarWeightedCashBufferedOrderSizer(OrderSizer):
         self.cash_buffer_percentage = self._check_set_cash_buffer(
             cash_buffer_percentage
         )
+        self.trade_percent = trade_percent
 
     def _check_set_cash_buffer(self, cash_buffer_percentage):
         """
@@ -78,6 +80,9 @@ class OneDollarWeightedCashBufferedOrderSizer(OrderSizer):
             The Broker portfolio total equity.
         """
         return self.broker.get_portfolio_total_equity(self.broker_portfolio_id)
+
+    def _obtain_broker_portfolio_cash(self):
+        return self.broker.get_portfolio_cash(self.broker_portfolio_id)
 
     def _normalise_weights(self, weights):
         """
@@ -129,8 +134,8 @@ class OneDollarWeightedCashBufferedOrderSizer(OrderSizer):
         `dict{Asset: dict}`
             The cash-buffered target portfolio dictionary with quantities.
         """
-        total_equity = self._obtain_broker_portfolio_total_equity()
-        cash_buffered_total_equity = total_equity * (
+        cash = self._obtain_broker_portfolio_cash()
+        cash_buffered_total_equity = cash * (
             1.0 - self.cash_buffer_percentage
         )
 
@@ -171,7 +176,7 @@ class OneDollarWeightedCashBufferedOrderSizer(OrderSizer):
                     'modifying the backtest start date and re-running.' % (asset, dt)
                 )
 
-            asset_quantity = int(after_cost_dollar_weight / asset_price)
+            asset_quantity = int(after_cost_dollar_weight * self.trade_percent / asset_price)
 
             # Add to the target portfolio
             target_portfolio[asset] = {"quantity": asset_quantity}
