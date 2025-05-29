@@ -35,6 +35,8 @@ def run(code, mode):
     diff = (close[-1] / close[-2] - 1) * 100
     output = "\n".join([code, "当天价格: <b>%.1f</b> (%s%.2f%s)" % (close[-1], "+" if diff > 0 else "-", abs(diff), "%"), "RSI2: <b>%.1lf</b>" % today_rsi,
                         "3d累积RSI2: <b>%.1lf</b>" % cumulate_rsi])
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(now, output)
     # 如果是daily的，那就默认发一次
     if mode == "day":
         return output

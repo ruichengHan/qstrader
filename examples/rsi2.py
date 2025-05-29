@@ -118,6 +118,30 @@ if __name__ == "__main__":
     asset_dates = {asset: start_dt for asset in total_assets}
     strategy_universe = DynamicUniverse(asset_dates)
 
+    # Construct benchmark assets (buy & hold SPY)
+    benchmark_symbols = ['xpp']
+    benchmark_assets = ['EQ:xpp']
+    benchmark_universe = StaticUniverse(benchmark_assets)
+    benchmark_data_source = CSVDailyBarDataSource(csv_dir, Equity, csv_symbols=benchmark_symbols)
+    benchmark_data_handler = BacktestDataHandler(benchmark_universe, data_sources=[benchmark_data_source])
+
+    # Construct a benchmark Alpha Model that provides
+    # 100% static allocation to the SPY ETF, with no rebalance
+    benchmark_alpha_model = FixedSignalsAlphaModel({'EQ:xpp': 1.0})
+    benchmark_backtest = BacktestTradingSession(
+        burn_in_dt,
+        end_dt,
+        benchmark_universe,
+        benchmark_alpha_model,
+        rebalance='buy_and_hold',
+        long_only=True,
+        cash_buffer_percentage=0.01,
+        data_handler=benchmark_data_handler,
+        memo_path="benchmark.csv")
+    benchmark_backtest.run()
+
+
+
     # To avoid loading all CSV files in the directory, set the
     # data source to load only those provided symbols
     strategy_data_source = CSVDailyBarDataSource(csv_dir, Equity, csv_symbols=strategy_symbols)
@@ -150,27 +174,7 @@ if __name__ == "__main__":
     )
     strategy_backtest.run(True)
 
-    # Construct benchmark assets (buy & hold SPY)
-    benchmark_symbols = ['sh000300']
-    benchmark_assets = ['EQ:sh000300']
-    benchmark_universe = StaticUniverse(benchmark_assets)
-    benchmark_data_source = CSVDailyBarDataSource(csv_dir, Equity, csv_symbols=benchmark_symbols)
-    benchmark_data_handler = BacktestDataHandler(benchmark_universe, data_sources=[benchmark_data_source])
 
-    # Construct a benchmark Alpha Model that provides
-    # 100% static allocation to the SPY ETF, with no rebalance
-    benchmark_alpha_model = FixedSignalsAlphaModel({'EQ:sh000300': 1.0})
-    benchmark_backtest = BacktestTradingSession(
-        burn_in_dt,
-        end_dt,
-        benchmark_universe,
-        benchmark_alpha_model,
-        rebalance='buy_and_hold',
-        long_only=True,
-        cash_buffer_percentage=0.01,
-        data_handler=benchmark_data_handler,
-        memo_path="benchmark.csv")
-    benchmark_backtest.run()
 
     # Performance Output
     tearsheet = TearsheetStatistics(

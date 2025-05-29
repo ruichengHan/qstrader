@@ -647,12 +647,6 @@ class SimulatedBroker(Broker):
                 )
             )
         self.open_orders[portfolio_id].put(order)
-        if settings.PRINT_EVENTS:
-            print(
-                "(%s) - submitted order: %s, qty: %s" % (
-                    self.current_dt, order.asset, order.quantity
-                )
-            )
 
     def update(self, dt):
         """

@@ -58,4 +58,12 @@ def download_stock_price():
         output = get_stock_his(code, "20160101", "20250101")
         output.to_csv(f"../qs_data/price/{code}.csv")
 
-get_index_his("sh000300")
+
+def get_xpp_history_price():
+    df = ak.stock_us_daily(symbol="XPP", adjust="")
+    df["adjust_close"] = df["close"]
+    df.to_csv("../qs_data/price/xpp.csv")
+
+
+if __name__ == "__main__":
+    get_xpp_history_price()
