@@ -60,9 +60,9 @@ def download_stock_price():
 
 
 def get_xpp_history_price():
-    df = ak.stock_us_daily(symbol="XPP", adjust="")
+    df = ak.stock_us_daily(symbol="FXP", adjust="")
     df["adjust_close"] = df["close"]
-    df.to_csv("../qs_data/price/xpp.csv")
+    df.to_csv("../qs_data/price/fxp.csv")
 
 
 if __name__ == "__main__":
