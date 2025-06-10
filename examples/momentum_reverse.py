@@ -17,6 +17,7 @@ from qstrader.data.daily_bar_csv import CSVDailyBarDataSource
 from qstrader.statistics.tearsheet import TearsheetStatistics
 from qstrader.trading.backtest import BacktestTradingSession
 from qstrader.broker.fee_model.percent_fee_model import PercentFeeModel
+import akshare as ak
 
 
 class TopNMomentumAlphaModel(AlphaModel):
@@ -105,9 +106,11 @@ class TopNMomentumAlphaModel(AlphaModel):
         `dict{str: float}`
             The newly created signal weights dictionary.
         """
+        put_factor = 0.3
         top_assets = self._highest_momentum_asset(dt)
         for asset in top_assets:
-            weights[asset] = 1.0 / self.mom_top_n
+            weights[asset] = (1.0 - put_factor) / self.mom_top_n
+        weights["EQ:FXP"] = put_factor
         return weights
 
     def __call__(
@@ -152,7 +155,6 @@ def get_index_stock(index_code="000300", year='20218'):
     -------
 
     """
-    import akshare as ak
     index_stock_cons_csindex_df = ak.index_stock_cons(symbol=index_code)
     filter_df = index_stock_cons_csindex_df[index_stock_cons_csindex_df["纳入日期"] < str(year)]
     out = []
@@ -162,7 +164,8 @@ def get_index_stock(index_code="000300", year='20218'):
 
 
 def get_symbols():
-    stock_list = set(get_index_stock() + get_index_stock("399905"))
+    stock_list = get_index_stock()
+    stock_list.append("FXP")
     out = []
     for root, dirs, files in os.walk(csv_dir):
         for file_name in files:
@@ -177,8 +180,8 @@ csv_dir = '/Users/rui.chengcr/PycharmProjects/qstrader/qs_data/price/'
 
 if __name__ == "__main__":
     # Duration of the backtest
-    start_dt = pd.Timestamp('2016-01-04 14:30:00', tz=pytz.UTC)
-    burn_in_dt = pd.Timestamp('2016-06-01 14:30:00', tz=pytz.UTC)
+    start_dt = pd.Timestamp('2020-01-04 14:30:00', tz=pytz.UTC)
+    burn_in_dt = pd.Timestamp('2020-06-01 14:30:00', tz=pytz.UTC)
     end_dt = pd.Timestamp('2024-12-31 23:59:00', tz=pytz.UTC)
 
     # Model parameters
@@ -220,10 +223,11 @@ if __name__ == "__main__":
         rebalance='weekly',
         rebalance_weekday="MON",
         long_only=True,
-        cash_buffer_percentage=0,
+        cash_buffer_percentage=0.05,
         burn_in_dt=burn_in_dt,
         data_handler=strategy_data_handler,
-        memo_path="strategy.csv"
+        memo_path="strategy.csv",
+        fee_model=PercentFeeModel(commission_pct=0.001, tax_pct=0)
     )
     strategy_backtest.run()
 
