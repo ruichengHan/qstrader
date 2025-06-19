@@ -23,29 +23,7 @@ import akshare as ak
 class TopNMomentumAlphaModel(AlphaModel):
 
     def __init__(self, signals, mom_lookback, mom_top_n, universe, data_handler):
-        """
-        Initialise the TopNMomentumAlphaModel
 
-        Parameters
-        ----------
-        signals : `SignalsCollection`
-            The entity for interfacing with various pre-calculated
-            signals. In this instance we want to use 'momentum'.
-        mom_lookback : `integer`
-            The number of business days to calculate momentum
-            lookback over.
-        mom_top_n : `integer`
-            The number of assets to include in the portfolio,
-            ranking from highest momentum descending.
-        universe : `Universe`
-            The collection of assets utilised for signal generation.
-        data_handler : `DataHandler`
-            The interface to the CSV data.
-
-        Returns
-        -------
-        None
-        """
         self.signals = signals
         self.mom_lookback = mom_lookback
         self.mom_top_n = mom_top_n
@@ -58,6 +36,8 @@ class TopNMomentumAlphaModel(AlphaModel):
         for line in open("../train/top_predictions.csv"):
             date, code, prediction = line.strip().split(",")
             print(date, code, prediction)
+            if not code.isdigit():
+                continue
             code = "EQ:%06d" % int(code)
             if date not in output:
                 output[date] = []
@@ -68,7 +48,7 @@ class TopNMomentumAlphaModel(AlphaModel):
             self, dt, weights
     ):
 
-        put_factor = 0
+        put_factor = 0.3
         top_assets = self.model_result.get(dt.strftime("%Y-%m-%d"), [])
         top_assets = list(filter(lambda x: x in weights, top_assets))
         if len(top_assets) == 0:
@@ -81,23 +61,7 @@ class TopNMomentumAlphaModel(AlphaModel):
     def __call__(
             self, dt
     ):
-        """
-        Calculates the signal weights for the top N
-        momentum alpha model, assuming that there is
-        sufficient data to begin calculating momentum
-        on the desired assets.
-
-        Parameters
-        ----------
-        dt : `pd.Timestamp`
-            The datetime for which the signal weights
-            should be calculated.
-
-        Returns
-        -------
-        `dict{str: float}`
-            The newly created signal weights dictionary.
-        """
+        
         assets = self.universe.get_assets(dt)
         weights = {asset: 0.0 for asset in assets}
 
@@ -109,17 +73,6 @@ class TopNMomentumAlphaModel(AlphaModel):
 
 
 def get_index_stock(index_code="000300", year='20218'):
-    """
-    获取一个指数的成分股
-    Parameters
-    ----------
-    index_code
-    year
-
-    Returns
-    -------
-
-    """
     index_stock_cons_csindex_df = ak.index_stock_cons(symbol=index_code)
     filter_df = index_stock_cons_csindex_df[index_stock_cons_csindex_df["纳入日期"] < str(year)]
     out = []
@@ -146,7 +99,7 @@ csv_dir = '/Users/rui.chengcr/PycharmProjects/qstrader/qs_data/price/'
 if __name__ == "__main__":
     # Duration of the backtest
     start_dt = pd.Timestamp('2020-01-04 14:30:00', tz=pytz.UTC)
-    burn_in_dt = pd.Timestamp('2021-01-01 14:30:00', tz=pytz.UTC)
+    burn_in_dt = pd.Timestamp('2021-01-04 14:30:00', tz=pytz.UTC)
     end_dt = pd.Timestamp('2024-12-31 23:59:00', tz=pytz.UTC)
 
     # Model parameters
