@@ -4,9 +4,11 @@ from pandas import DataFrame
 import talib
 import akshare as ak
 from lightgbm import LGBMRanker
+import numpy as np
 
 
 features = set([])
+window = [3, 5, 10, 20, 40]
 
 
 def kbars(df: DataFrame, features: list):
@@ -32,24 +34,53 @@ def kbars(df: DataFrame, features: list):
 
 def cal_code_feature(df: DataFrame, features: list):
     df = kbars(df, features)
-    df = cal_windows_feature(df, [3, 5, 10, 20, 40], features)
+    df = cal_windows_feature(df, features)
     return df
 
-def cal_windows_feature(df: DataFrame, windows: list, features: list):
+def cal_windows_feature(df: DataFrame, features: list):
     
-    for w in windows:
+    df["ROC_CLOSE_1"] = talib.ROC(df['close'], timeperiod=1)
+    df["ROC_VOLUME_1"] = talib.ROC(np.log(df['volume']), timeperiod=1)
+    for w in window:
         df["ROC_" + str(w)] = talib.ROC(df['close'], timeperiod=w)
-        df["SMA_" + str(w)] = talib.SMA(df['close'], timeperiod=w)        
+        df["SMA_" + str(w)] = talib.SMA(df['close'], timeperiod=w) / df['close']
         df["RSI_" + str(w)] = talib.RSI(df['close'], timeperiod=w) / 100        
-        df["STD_" + str(w)] = talib.STDDEV(df['close'], timeperiod=w)        
-        df["SLOPE_" + str(w)] = talib.LINEARREG_SLOPE(df['close'], timeperiod=w)
+        df["STD_" + str(w)] = talib.STDDEV(df['close'], timeperiod=w) / df['close']
+        df["SLOPE_" + str(w)] = talib.LINEARREG_SLOPE(df['close'], timeperiod=w) / df['close']
+        df["RESIDUAL_" + str(w)] = talib.LINEARREG_INTERCEPT(df['close'], timeperiod=w) / df['close']
+        df["MAX_" + str(w)] = df['high'].rolling(window=w).max() / df['close']
+        df["MIN_" + str(w)] = df['low'].rolling(window=w).min() / df['close']
+        df["QTLU_" + str(w)] = df['close'].rolling(window=w).quantile(0.8) / df['close']
+        df["QTLD_" + str(w)] = df['close'].rolling(window=w).quantile(0.2) / df['close']
+        df["TS_RANK_" + str(w)] = df["close"].rolling(window=w).rank(pct=True)
+        df["RSV_" + str(w)] = (df['close'] - df['low'].rolling(window=w).min()) / (df['high'].rolling(window=w).max() - df['low'].rolling(window=w).min() + 0.0001)
+        df["IDXMAX_" + str(w)] = df['high'].rolling(window=w, min_periods=1).apply(lambda x: x.argmax(), raw=True) / w
+        df["IDXMIN_" + str(w)] = df['low'].rolling(window=w, min_periods=1).apply(lambda x: x.argmin(), raw=True) / w
+        df["IMXD_" + str(w)] = df["IDXMAX_" + str(w)] - df["IDXMIN_" + str(w)] / w
+        df["CORR_" + str(w)] = talib.CORREL(df['close'], df['volume'], timeperiod=w)
+        df["CORD_" + str(w)] = talib.CORREL(df["ROC_CLOSE_1"], df["ROC_VOLUME_1"], timeperiod=w)
+        df["CNTP_" + str(w)] = (df["ROC_CLOSE_1"] > 0).rolling(window=w).sum() / w
+        df["CNTN_" + str(w)] = (df["ROC_CLOSE_1"] < 0).rolling(window=w).sum() / w
+        df["CNTD_" + str(w)] = df["CNTP_" + str(w)] - df["CNTN_" + str(w)]
+        
         
         features.add("ROC_" + str(w))
         features.add("SMA_" + str(w))
         features.add("RSI_" + str(w))
         features.add("STD_" + str(w))
         features.add("SLOPE_" + str(w))
-    
+        features.add("RESIDUAL_" + str(w))
+        features.add("MAX_" + str(w))
+        features.add("MIN_" + str(w))
+        features.add("QTLU_" + str(w))
+        features.add("QTLD_" + str(w))
+        features.add("IDXMAX_" + str(w))
+        features.add("IDXMIN_" + str(w))
+        features.add("CORR_" + str(w))
+        features.add("CORD_" + str(w))
+        features.add("CNTP_" + str(w))
+        features.add("CNTN_" + str(w))
+        features.add("CNTD_" + str(w))
     return df
 
 
@@ -107,7 +138,7 @@ def read_data(csv_dir: str, features: list, symbols: list):
             df['code'] = filename[:-4]
             df['code'] = df['code'].astype(str)
             base_features = ['open', 'high', 'low', 'close', 'volume']
-            window = [3, 5, 10]
+            
             for f in base_features:
                 for w in window:
                     df[f"{f}_{w}"] = df[f].shift(w)

@@ -20,7 +20,7 @@ def get_index_stock(code):
     close = df["close"].to_numpy()
 
     # 拿最新的
-    current = ak.stock_zh_index_spot_sina()
+    current = ak.fund_etf_category_sina("ETF基金")
     current = current[current["代码"] == code]
     current_price = current["最新价"].to_numpy()
 
@@ -33,7 +33,7 @@ def run(code, mode):
     today_rsi = rsi[-1]
     cumulate_rsi = rsi[-1] + rsi[-2] + rsi[-3]
     diff = (close[-1] / close[-2] - 1) * 100
-    output = "\n".join([code, "当天价格: <b>%.1f</b> (%s%.2f%s)" % (close[-1], "+" if diff > 0 else "-", abs(diff), "%"), "RSI2: <b>%.1lf</b>" % today_rsi,
+    output = "\n".join([code, "当天价格: <b>%.3f</b> (%s%.1f%s)" % (close[-1], "+" if diff > 0 else "-", abs(diff), "%"), "RSI2: <b>%.1lf</b>" % today_rsi,
                         "3d累积RSI2: <b>%.1lf</b>" % cumulate_rsi])
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(now, output)
@@ -71,7 +71,7 @@ def send_msg(msg):
 
 if __name__ == '__main__':
     mode = sys.argv[1]
-    codes = ["sh000300"]
+    codes = ["sh510300", "sh518880", "sh510500"]
     out = [run(code, mode) for code in codes]
     msg = "\n".join(out)
     if len(msg) > 10:

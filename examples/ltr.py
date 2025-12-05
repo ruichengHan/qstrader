@@ -48,7 +48,7 @@ class TopNMomentumAlphaModel(AlphaModel):
             self, dt, weights
     ):
 
-        put_factor = 0.3
+        put_factor = 0
         top_assets = self.model_result.get(dt.strftime("%Y-%m-%d"), [])
         top_assets = list(filter(lambda x: x in weights, top_assets))
         if len(top_assets) == 0:

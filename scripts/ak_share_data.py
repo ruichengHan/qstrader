@@ -55,7 +55,7 @@ def download_stock_price():
         cnt += 1
         if cnt % 10 == 0:
             print('cnt = ', cnt)
-        output = get_stock_his(code, "20160101", "20250101")
+        output = get_stock_his(code, "20160101", "20251201")
         output.to_csv(f"../qs_data/price/{code}.csv")
 
 
@@ -64,6 +64,11 @@ def get_xpp_history_price():
     df["adjust_close"] = df["close"]
     df.to_csv("../qs_data/price/fxp.csv")
 
+def get_hk_history_price():
+    df = ak.stock_hk_daily("02827", "hfq")
+    df["adjust_close"] = df["close"]
+    df.to_csv("../qs_data/price/02827.csv")
+
 
 if __name__ == "__main__":
-    get_xpp_history_price()
+    get_index_his("sh000300")
